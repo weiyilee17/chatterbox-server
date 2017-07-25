@@ -23,6 +23,7 @@ this file and include it in basic-server.js so that it actually works.
 //
 // Another way to get around this restriction is to serve you chat
 // client from this domain by setting up static file serving.
+var qs = require('qs');
 var defaultCorsHeaders = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -64,20 +65,37 @@ var requestHandler = function(request, response) {
   } else if (request.method === 'POST') {
     if (request.url === '/classes/messages') {
       // TODO detect incorrect messages
-      console.log('request', request);
+      
+      var requestBody = '';
+      request.on('data', function(data) {
+        requestBody += data;
+        if (requestBody.length > 1e7) {
+          response.writeHead(413, 'RequestEntity Too Large', {});
+          response.end();
+        }
+      });
+      request.on('end', function() {
+        var formData = qs.parse(requestBody);
+        for (let prop in formData) {
+          messages.push(JSON.parse(prop));
+        }
+        console.log('saved messages', messages);
+        var headers = defaultCorsHeaders;
+        headers['Content-Type'] = 'application/json';
+        response.writeHead(201, headers); // on success
+        response.end(
+          JSON.stringify(
+            {'_data': 
+              {'results': messages}
+            }
+          )
+      );
+      
+      });
       
       //messages.push(request.somethinghere);
       
-      var headers = defaultCorsHeaders;
-      headers['Content-Type'] = 'application/json';
-      response.writeHead(201, headers); // on success
-      response.end(
-        JSON.stringify(
-          {'_data': 
-            {'results': messages}
-          }
-        )
-      );
+    
     } else {
       // TODO write 404
     }  
@@ -93,21 +111,22 @@ var requestHandler = function(request, response) {
     response.writeHead(404, headers);
     response.end();
   }
+  
   // The outgoing status.
-  var statusCode = 200;
+  //var statusCode = 200;
 
   // See the note below about CORS headers.
-  var headers = defaultCorsHeaders;
+  //var headers = defaultCorsHeaders;
 
   // Tell the client we are sending them plain text.
   //
   // You will need to change this if you are sending something
   // other than plain text, like JSON or HTML.
-  headers['Content-Type'] = 'text/plain';
+  //headers['Content-Type'] = 'text/plain';
 
   // .writeHead() writes to the request line and headers of the response,
   // which includes the status and all headers.
-  response.writeHead(statusCode, headers);
+  //response.writeHead(statusCode, headers);
   // Make sure to always call response.end() - Node may not send
   // anything back to the client until you do. The string you pass to
   // response.end() will be the body of the response - i.e. what shows
@@ -115,8 +134,8 @@ var requestHandler = function(request, response) {
   //
   // Calling .end "flushes" the response's internal buffer, forcing
   // node to actually send all the data over to the client.
-  response.end('Hello, World!');
+  //response.end('Hello, World!');
 
 };
 
-module.exports = requestHandler;
+module.exports.requestHandler = requestHandler;
