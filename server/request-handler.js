@@ -37,6 +37,26 @@ var defaultCorsHeaders = {
 
 var messages = [];
 
+var messageMaker = function(str) {
+  let newMessage = {};
+  // username=matt&text=te=st&roomname=lobby
+  if (str.startsWith('{')) {
+    // if str is object
+    newMessage = JSON.parse(str);
+  } else {
+    let parameters = str.split('&'); // array of strings [username=matt, text=test...]
+    parameters = parameters.map(p => p.split('=')); // array of arrays of strings [[username, matt], [text, te, st]...]
+    parameters.forEach(p => {
+      // only add paramenter to message if user doesn't type = in text, username...
+      if (p.length === 2) {
+        newMessage[p[0] === 'text' ? 'message' : p[0]] = p[1];
+      }
+    }); 
+  }
+  newMessage.objectId = messages.length;
+  messages.push(newMessage);
+};
+
 var requestHandler = function(request, response) {
   // Request and Response come from node's http module.
   
@@ -54,25 +74,25 @@ var requestHandler = function(request, response) {
   // console.logs in your code.
   // require('url').parse(...)
    
-  console.log(`Serving request type ${request.method} for rel-url ${request.url}`);
-
+  let path = request.url.split('?')[0]; 
+  let options = request.url.split('?')[1];
+  console.log(`Serving request type ${request.method} for rel-url ${path}`);
+    
   switch (request.method) {
     case 'GET':
-      let path = request.url;
+      var headers = defaultCorsHeaders;
       if (path === '/classes/messages' || path === '/' || path === '') {
-        var headers = defaultCorsHeaders;
         headers['Content-Type'] = 'application/json';
         response.writeHead(200, headers);
         response.end(JSON.stringify({'results': messages}));
       } else {
         // TODO write 404
-        var headers = defaultCorsHeaders;
         response.writeHead(404, headers);
         response.end();
       }
       break;
     case 'POST':
-      if (request.url === '/classes/messages') {
+      if (path === '/classes/messages' || path === '/') {
         // TODO detect incorrect messages   
         var requestBody = '';
         request.on('data', (data) => {
@@ -83,10 +103,7 @@ var requestHandler = function(request, response) {
           }
         });
         request.on('end', () => {
-          var formData = qs.parse(requestBody);
-          for (let prop in formData) {
-            messages.push(JSON.parse(prop));
-          }
+          messageMaker(requestBody); // try catch 
           console.log('saved messages', messages);
           var headers = defaultCorsHeaders;
           headers['Content-Type'] = 'application/json';
@@ -104,7 +121,7 @@ var requestHandler = function(request, response) {
     case 'PUT':
       break;
     case 'OPTIONS':
-      response.writeHead(204, defaultCorsHeaders);
+      response.writeHead(200, defaultCorsHeaders);
       response.end();
       break;
     case 'DELETE':
@@ -116,7 +133,7 @@ var requestHandler = function(request, response) {
   }
   
   // The outgoing status.
-  //var statusCode = 200;
+  // var statusCode = 200;
 
   // See the note below about CORS headers.
   //var headers = defaultCorsHeaders;
