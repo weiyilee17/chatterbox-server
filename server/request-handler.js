@@ -16,6 +16,7 @@ Check out the node module documentation at http://nodejs.org/api/modules.html.
 
 // Imports 
 const qs = require('qs');
+const fs = require('fs');
 
 // These headers will allow Cross-Origin Resource Sharing (CORS).
 // This code allows this server to talk to websites that
@@ -27,6 +28,26 @@ const qs = require('qs');
 
 // Another way to get around this restriction is to serve you chat
 // client from this domain by setting up static file serving.
+
+let index = fs.readFileSync('client/index.html'); 
+let jq = fs.readFileSync('client/bower_components/jquery/dist/jquery.js'); 
+let con = fs.readFileSync('client/env/config.example.js');
+let app = fs.readFileSync('client/scripts/app.js');
+let gif = fs.readFileSync('client/images/spiffygif_46x46.gif');
+let css = fs.readFileSync('client/styles/styles.css');
+
+/**
+ * Map each special endpoint to tuple. 
+ *
+ */
+let specialEndpoints = {
+  '/': ['text/HTML', index],
+  '/bower_components/jquery/dist/jquery.js': ['application/javascript', jq],
+  '/env/config.js': ['application/javascript', con],
+  '/scripts/app.js': ['application/javascript', app],
+  '/images/spiffygif_46x46.gif': ['image/gif', gif],
+  '/styles/styles.css': ['text/css', css]
+};
 
 var defaultCorsHeaders = {
   'access-control-allow-origin': '*',
@@ -44,8 +65,10 @@ var messageMaker = function(str) {
     // if str is object
     newMessage = JSON.parse(str);
   } else {
-    let parameters = str.split('&'); // array of strings [username=matt, text=test...]
-    parameters = parameters.map(p => p.split('=')); // array of arrays of strings [[username, matt], [text, te, st]...]
+    let parameters = str.split('&'); 
+    // array of strings [username=matt, text=test...]
+    parameters = parameters.map(p => p.split('=')); 
+    // array of arrays of strings [[username, matt], [text, te, st]...]
     parameters.forEach(p => {
       // only add paramenter to message if user doesn't type = in text, username...
       if (p.length === 2) {
@@ -56,6 +79,7 @@ var messageMaker = function(str) {
   newMessage.objectId = messages.length;
   messages.push(newMessage);
 };
+
 
 var requestHandler = function(request, response) {
   // Request and Response come from node's http module.
@@ -76,61 +100,73 @@ var requestHandler = function(request, response) {
    
   let path = request.url.split('?')[0]; 
   let options = request.url.split('?')[1];
-  console.log(`Serving request type ${request.method} for rel-url ${path}`);
-    
-  switch (request.method) {
-    case 'GET':
-      var headers = defaultCorsHeaders;
-      if (path === '/classes/messages' || path === '/' || path === '') {
-        headers['Content-Type'] = 'application/json';
-        response.writeHead(200, headers);
-        response.end(JSON.stringify({'results': messages}));
-      } else {
-        // TODO write 404
-        response.writeHead(404, headers);
-        response.end();
-      }
-      break;
-    case 'POST':
-      if (path === '/classes/messages' || path === '/') {
-        // TODO detect incorrect messages   
-        var requestBody = '';
-        request.on('data', (data) => {
-          requestBody += data;
-          if (requestBody.length > 1e7) {
-            response.writeHead(413, 'RequestEntity Too Large', {});
-            response.end();
-          }
-        });
-        request.on('end', () => {
-          messageMaker(requestBody); // try catch 
-          console.log('saved messages', messages);
-          var headers = defaultCorsHeaders;
+  
+  if (specialEndpoints.hasOwnProperty(path)) {
+    // Special mappings 
+    var headers = defaultCorsHeaders;
+    console.log('edge case detected!');
+    headers['Content-Type'] = specialEndpoints[path][0]; 
+    response.writeHead(200, headers);
+    response.end(specialEndpoints[path][1]);   
+  } else {
+    // default mappings 
+    console.log(`Serving request type ${request.method} for rel-url ${path}`);
+    switch (request.method) {
+      case 'GET':
+        var headers = defaultCorsHeaders;
+        if (path === '/classes/messages') {
           headers['Content-Type'] = 'application/json';
-          response.writeHead(201, headers); // on success
-          response.end(
-            JSON.stringify({'_data': {'results': messages} })
-          );
-        });
-      } else {
+          response.writeHead(200, headers);
+          response.end(JSON.stringify({'results': messages}));
+        } else {
+          // TODO write 404
+          response.writeHead(404, headers);
+          response.end();
+        }
+        break;
+      case 'POST':
+        if (path === '/classes/messages') {
+          // TODO detect incorrect messages   
+          var requestBody = '';
+          request.on('data', (data) => {
+            requestBody += data;
+            if (requestBody.length > 1e7) {
+              response.writeHead(413, 'RequestEntity Too Large', {});
+              response.end();
+            }
+          });
+          request.on('end', () => {
+            messageMaker(requestBody); // try catch 
+            console.log('saved messages', messages);
+            var headers = defaultCorsHeaders;
+            headers['Content-Type'] = 'application/json';
+            response.writeHead(201, headers); // on success
+            response.end(
+              JSON.stringify({'_data': {'results': messages} })
+            );
+          });
+        } else {
+          response.writeHead(404, defaultCorsHeaders);
+          response.end();
+          break;
+        }  
+        break;
+      case 'PUT':
+        break;
+      case 'OPTIONS':
+        response.writeHead(200, defaultCorsHeaders);
+        response.end();
+        break;
+      case 'DELETE':
+        break;
+      default: 
         response.writeHead(404, defaultCorsHeaders);
         response.end();
         break;
-      }  
-      break;
-    case 'PUT':
-      break;
-    case 'OPTIONS':
-      response.writeHead(200, defaultCorsHeaders);
-      response.end();
-      break;
-    case 'DELETE':
-      break;
-    default: 
-      response.writeHead(404, defaultCorsHeaders);
-      response.end();
-      break;
+    }
   }
+  
+  
   
   // The outgoing status.
   // var statusCode = 200;
