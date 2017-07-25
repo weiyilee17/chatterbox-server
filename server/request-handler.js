@@ -13,7 +13,6 @@ this file and include it in basic-server.js so that it actually works.
 
 **************************************************************/
 
-
 // These headers will allow Cross-Origin Resource Sharing (CORS).
 // This code allows this server to talk to websites that
 // are on different domains, for instance, your chat client.
@@ -51,7 +50,8 @@ var requestHandler = function(request, response) {
   // require('url').parse(...)
   console.log(`Serving request type ${request.method} for url ${request.url}`);
   if (request.method === 'GET') {
-    if (request.url === '/classes/messages') {
+    let path = request.url;
+    if (path === '/classes/messages' || path === '/' || path === '') {
       var headers = defaultCorsHeaders;
       headers['Content-Type'] = 'application/json';
       response.writeHead(200, headers);
@@ -64,8 +64,7 @@ var requestHandler = function(request, response) {
     }
   } else if (request.method === 'POST') {
     if (request.url === '/classes/messages') {
-      // TODO detect incorrect messages
-      
+      // TODO detect incorrect messages   
       var requestBody = '';
       request.on('data', function(data) {
         requestBody += data;
@@ -92,10 +91,6 @@ var requestHandler = function(request, response) {
       );
       
       });
-      
-      //messages.push(request.somethinghere);
-      
-    
     } else {
       // TODO write 404
     }  
@@ -104,7 +99,10 @@ var requestHandler = function(request, response) {
   } else if (request.method === 'DELETE') {
     
   } else if (request.method === 'OPTIONS') {
-    
+    // return rest calls that are available
+    var headers = defaultCorsHeaders;
+    response.writeHead(204, headers);
+    response.end();
   } else {
     // return 404
     var headers = defaultCorsHeaders;
@@ -137,5 +135,7 @@ var requestHandler = function(request, response) {
   //response.end('Hello, World!');
 
 };
+
+
 
 module.exports.requestHandler = requestHandler;
