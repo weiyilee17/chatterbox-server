@@ -115,5 +115,67 @@ describe('Node Server Request Listener Function', function() {
         expect(res._responseCode).to.equal(404);
       });
   });
+  
+  // added test coverage
+  
+  //?order=-createdAt
+  it('Should route to / given url /?order=-createdAt', function() {
+    var req = new stubs.request('/?order=-createdAt', 'GET');
+    var res = new stubs.response();
+
+    handler.requestHandler(req, res);
+
+    // Wait for response to return and then check status code
+    waitForThen(
+      function() { return res._ended; },
+      function() {
+        var messages = JSON.parse(res._data).results;
+        expect(messages.length).to.be.above(0);
+        expect(res._responseCode).to.equal(200);
+      });
+  });  
+  
+  it('Should post messages with a room property', function() {
+    var stubMsg = {
+      username: 'Hello',
+      message: 'World!',
+      roomname: 'lobby'
+    };
+    var req = new stubs.request('/classes/messages', 'POST', stubMsg);
+    var res = new stubs.response();
+
+    handler.requestHandler(req, res);
+
+    expect(res._responseCode).to.equal(201);
+
+    // Now if we request the log for that room the message we posted should be there:
+    req = new stubs.request('/classes/messages', 'GET');
+    res = new stubs.response();
+
+    handler.requestHandler(req, res);
+
+    expect(res._responseCode).to.equal(200);
+    var messages = JSON.parse(res._data).results;
+    expect(messages.length).to.be.above(0);
+    expect(messages[messages.length - 1].username).to.equal('Hello');
+    expect(messages[messages.length - 1].message).to.equal('World!');
+    expect(messages[messages.length - 1].roomname).to.equal('lobby');
+    expect(res._ended).to.equal(true);
+  });
+  
+  it('Should give each message a object id', function() {
+
+    // Now if we request the log for that room the message we posted should be there:
+    req = new stubs.request('/classes/messages', 'GET');
+    res = new stubs.response();
+
+    handler.requestHandler(req, res);
+
+    expect(res._responseCode).to.equal(200);
+    var messages = JSON.parse(res._data).results;
+    expect(messages[messages.length - 1].hasOwnProperty('objectId')).to.equal(true);
+    expect(res._ended).to.equal(true);
+  });
+  
 
 });
