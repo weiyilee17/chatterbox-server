@@ -1,5 +1,5 @@
 /*eslint indent: ["error", 2, { "SwitchCase": 1 }]*/
-/*************************************************************
+/**************************************************************
 
 You should implement your request handler function in this file.
 
@@ -9,20 +9,25 @@ in basic-server.js, but it won't work as is.
 You'll have to figure out a way to export this function from
 this file and include it in basic-server.js so that it actually works.
 
-*Hint* Check out the node module documentation at http://nodejs.org/api/modules.html.
+*Hint* 
+Check out the node module documentation at http://nodejs.org/api/modules.html.
 
 **************************************************************/
+
+// Imports 
+const qs = require('qs');
 
 // These headers will allow Cross-Origin Resource Sharing (CORS).
 // This code allows this server to talk to websites that
 // are on different domains, for instance, your chat client.
-//
-// Your chat client is running from a url like file://your/chat/client/index.html,
+
+// Your chat client is running from a url like 
+// file://your/chat/client/index.html,
 // which is considered a different domain.
-//
+
 // Another way to get around this restriction is to serve you chat
 // client from this domain by setting up static file serving.
-var qs = require('qs');
+
 var defaultCorsHeaders = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -34,80 +39,80 @@ var messages = [];
 
 var requestHandler = function(request, response) {
   // Request and Response come from node's http module.
-  //
+  
   // They include information about both the incoming request, such as
   // headers and URL, and about the outgoing response, such as its status
   // and content.
-  //
-  // Documentation for both request and response can be found in the HTTP section at
-  // http://nodejs.org/documentation/api/
+ 
+  // Documentation for both request and response can be found in the HTTP 
+  // section at http://nodejs.org/documentation/api/
 
   // Do some basic logging.
-  //
+   
   // Adding more logging to your server can be an easy way to get passive
   // debugging help, but you should always be careful about leaving stray
   // console.logs in your code.
   // require('url').parse(...)
-  console.log(`Serving request type ${request.method} for url ${request.url}`);
-  if (request.method === 'GET') {
-    let path = request.url;
-    if (path === '/classes/messages' || path === '/' || path === '') {
-      var headers = defaultCorsHeaders;
-      headers['Content-Type'] = 'application/json';
-      response.writeHead(200, headers);
-      response.end(JSON.stringify({'results': messages}));
-    } else {
-      // TODO write 404
-      var headers = defaultCorsHeaders;
-      response.writeHead(404, headers);
-      response.end();
-    }
-  } else if (request.method === 'POST') {
-    if (request.url === '/classes/messages') {
-      // TODO detect incorrect messages   
-      var requestBody = '';
-      request.on('data', function(data) {
-        requestBody += data;
-        if (requestBody.length > 1e7) {
-          response.writeHead(413, 'RequestEntity Too Large', {});
-          response.end();
-        }
-      });
-      request.on('end', function() {
-        var formData = qs.parse(requestBody);
-        for (let prop in formData) {
-          messages.push(JSON.parse(prop));
-        }
-        console.log('saved messages', messages);
+   
+  console.log(`Serving request type ${request.method} for rel-url ${request.url}`);
+
+  switch (request.method) {
+    case 'GET':
+      let path = request.url;
+      if (path === '/classes/messages' || path === '/' || path === '') {
         var headers = defaultCorsHeaders;
         headers['Content-Type'] = 'application/json';
-        response.writeHead(201, headers); // on success
-        response.end(
-          JSON.stringify(
-            {'_data': 
-              {'results': messages}
-            }
-          )
-      );
-      
-      });
-    } else {
-      // TODO write 404
-    }  
-  } else if (request.method === 'PUT') {
-    
-  } else if (request.method === 'DELETE') {
-    
-  } else if (request.method === 'OPTIONS') {
-    // return rest calls that are available
-    var headers = defaultCorsHeaders;
-    response.writeHead(204, headers);
-    response.end();
-  } else {
-    // return 404
-    var headers = defaultCorsHeaders;
-    response.writeHead(404, headers);
-    response.end();
+        response.writeHead(200, headers);
+        response.end(JSON.stringify({'results': messages}));
+      } else {
+        // TODO write 404
+        var headers = defaultCorsHeaders;
+        response.writeHead(404, headers);
+        response.end();
+      }
+      break;
+    case 'POST':
+      if (request.url === '/classes/messages') {
+        // TODO detect incorrect messages   
+        var requestBody = '';
+        request.on('data', (data) => {
+          requestBody += data;
+          if (requestBody.length > 1e7) {
+            response.writeHead(413, 'RequestEntity Too Large', {});
+            response.end();
+          }
+        });
+        request.on('end', () => {
+          var formData = qs.parse(requestBody);
+          for (let prop in formData) {
+            messages.push(JSON.parse(prop));
+          }
+          console.log('saved messages', messages);
+          var headers = defaultCorsHeaders;
+          headers['Content-Type'] = 'application/json';
+          response.writeHead(201, headers); // on success
+          response.end(
+            JSON.stringify({'_data': {'results': messages} })
+          );
+        });
+      } else {
+        response.writeHead(404, defaultCorsHeaders);
+        response.end();
+        break;
+      }  
+      break;
+    case 'PUT':
+      break;
+    case 'OPTIONS':
+      response.writeHead(204, defaultCorsHeaders);
+      response.end();
+      break;
+    case 'DELETE':
+      break;
+    default: 
+      response.writeHead(404, defaultCorsHeaders);
+      response.end();
+      break;
   }
   
   // The outgoing status.
@@ -129,13 +134,10 @@ var requestHandler = function(request, response) {
   // anything back to the client until you do. The string you pass to
   // response.end() will be the body of the response - i.e. what shows
   // up in the browser.
-  //
   // Calling .end "flushes" the response's internal buffer, forcing
   // node to actually send all the data over to the client.
   //response.end('Hello, World!');
 
 };
-
-
 
 module.exports.requestHandler = requestHandler;
