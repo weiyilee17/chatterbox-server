@@ -17,6 +17,7 @@ Check out the node module documentation at http://nodejs.org/api/modules.html.
 // Imports 
 const qs = require('qs');
 const fs = require('fs');
+const url = require('url');
 
 // These headers will allow Cross-Origin Resource Sharing (CORS).
 // This code allows this server to talk to websites that
@@ -56,7 +57,7 @@ var defaultCorsHeaders = {
   'access-control-max-age': 10 // Seconds.
 };
 
-var messages = [];
+var messages = [{ username: 'Matt & Lee', message: 'Welcome!', roomname: 'lobby', objectId: 1 }];
 
 var messageMaker = function(str) {
   let newMessage = {};
@@ -67,7 +68,7 @@ var messageMaker = function(str) {
   } else {
     let parameters = str.split('&'); 
     // array of strings [username=matt, text=test...]
-    parameters = parameters.map(p => p.split('=')); 
+    parameters = parameters.map(p => p.split('=', 2)); // limit to one split
     // array of arrays of strings [[username, matt], [text, te, st]...]
     parameters.forEach(p => {
       // only add paramenter to message if user doesn't type = in text, username...
@@ -76,41 +77,24 @@ var messageMaker = function(str) {
       }
     }); 
   }
-  newMessage.objectId = messages.length;
+  newMessage.objectId = messages.length + 1;
   messages.push(newMessage);
 };
 
 
 var requestHandler = function(request, response) {
-  // Request and Response come from node's http module.
-  
-  // They include information about both the incoming request, such as
-  // headers and URL, and about the outgoing response, such as its status
-  // and content.
- 
-  // Documentation for both request and response can be found in the HTTP 
-  // section at http://nodejs.org/documentation/api/
-
-  // Do some basic logging.
-   
-  // Adding more logging to your server can be an easy way to get passive
-  // debugging help, but you should always be careful about leaving stray
-  // console.logs in your code.
-  // require('url').parse(...)
-   
-  let path = request.url.split('?')[0]; 
+  let path = url.parse(request.url).pathname; 
   let options = request.url.split('?')[1];
-  
+  console.log(`Serving ${request.method} to endpoint ${path}`);
+
   if (specialEndpoints.hasOwnProperty(path)) {
     // Special mappings 
     var headers = defaultCorsHeaders;
-    console.log('edge case detected!');
     headers['Content-Type'] = specialEndpoints[path][0]; 
     response.writeHead(200, headers);
     response.end(specialEndpoints[path][1]);   
   } else {
     // default mappings 
-    console.log(`Serving request type ${request.method} for rel-url ${path}`);
     switch (request.method) {
       case 'GET':
         var headers = defaultCorsHeaders;
